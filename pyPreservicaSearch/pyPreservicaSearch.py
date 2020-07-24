@@ -9,6 +9,10 @@ from PySide2.QtWidgets import QAbstractItemView, QDialog, QDialogButtonBox, QApp
     QItemDelegate, QLineEdit, QTreeView
 from pyPreservica import *
 
+TYPE_ANY = "Any"
+TYPE_ASSET = "Asset"
+TYPE_FOLDER = "Folder"
+DOCUMENT_TYPE = "xip.document_type"
 
 class CallBack(QObject):
     change_value = QtCore.Signal(int)
@@ -48,6 +52,7 @@ class Worker(QRunnable):
             self.client.search_index_filter_csv(self.query_term, self.csv_name, self.metadata_fields)
         except:
             pass
+        self.callback("0:0")
         if self.auto_open:
             if platform.system() == 'Darwin':  # macOS
                 subprocess.call(('open', self.csv_name))
@@ -64,7 +69,8 @@ class ReportNameDialog(QDialog):
         self.report_name = ""
         self.setWindowTitle("Enter Report Name")
 
-        self.report_label = QtWidgets.QLabel("Report File Name: ")
+        self.report_label = QtWidgets.QLabel("Report Name: ")
+        self.report_suffix = QtWidgets.QLabel(".csv")
         self.report_text = QtWidgets.QLineEdit("")
 
         self.gridlayout = QtWidgets.QGridLayout()
@@ -72,6 +78,7 @@ class ReportNameDialog(QDialog):
 
         self.gridlayout.addWidget(self.report_label, 1, 1)
         self.gridlayout.addWidget(self.report_text, 1, 2)
+        self.gridlayout.addWidget(self.report_suffix, 1, 3)
 
         self.open_report = QtWidgets.QCheckBox("Open Report on Completion")
         self.open_report.setChecked(True)
@@ -189,13 +196,13 @@ class ComboDelegate(QItemDelegate):
         item_model = self.model
         index_name = item_model.item(index.row(), 0).text()
 
-        if index_name == "xip.document_type":
+        if index_name == DOCUMENT_TYPE:
             self.drop_down_row = index.row()
             combo = QComboBox(parent)
             li = list()
-            li.append("Any")
-            li.append("Asset")
-            li.append("Folder")
+            li.append(TYPE_ANY)
+            li.append(TYPE_ASSET)
+            li.append(TYPE_FOLDER)
             combo.addItems(li)
             self.connect(combo, SIGNAL("currentIndexChanged(int)"), self, SLOT("currentIndexChanged()"))
             return combo
@@ -204,7 +211,17 @@ class ComboDelegate(QItemDelegate):
 
     def setEditorData(self, editor, index):
         editor.blockSignals(True)
-        #editor.setCurrentIndex(int(index.model().data(index)))
+        if index.row() == self.drop_down_row:
+            if self.model.data(index) is not None:
+                if self.model.data(index) == TYPE_ANY:
+                    editor.setCurrentIndex(0)
+                if self.model.data(index) == TYPE_ASSET:
+                    editor.setCurrentIndex(1)
+                if self.model.data(index) == TYPE_FOLDER:
+                    editor.setCurrentIndex(2)
+        else:
+            if self.model.item(index.row(), 1) is not None:
+                editor.setText(self.model.item(index.row(), 1).text())
         editor.blockSignals(False)
 
     def setModelData(self, editor, model, index):
@@ -233,12 +250,12 @@ class MyWidget(QtWidgets.QWidget):
                     metadata_fields[index_name] = ""
                     if hasattr(item_model.item(i, 1), "text"):
                         index_value = item_model.item(i, 1).text()
-                        if index_name =="xip.document_type":
-                            if index_value == "Asset":
+                        if index_name ==DOCUMENT_TYPE:
+                            if index_value == TYPE_ASSET:
                                 index_value = "IO"
-                            if index_value == "Folder":
-                                index_value = "IO"
-                            if index_value == "Any":
+                            if index_value == TYPE_FOLDER:
+                                index_value = "SO"
+                            if index_value == TYPE_ANY:
                                 index_value = ""
                         metadata_fields[index_name] = index_value
 
@@ -282,7 +299,7 @@ class MyWidget(QtWidgets.QWidget):
         self.list.setColumnWidth(0, 350)
         self.list.setColumnWidth(1, 250)
 
-        self.list.setItemDelegateForColumn(1, ComboDelegate(self.list, "xip.document_type", model))
+        self.list.setItemDelegateForColumn(1, ComboDelegate(self.list, DOCUMENT_TYPE, model))
 
         if not os.path.isfile("credentials.properties"):
             dialog = PasswordDialog()
@@ -299,16 +316,6 @@ class MyWidget(QtWidgets.QWidget):
             index = QStandardItem(index_name)
             index.setCheckable(True)
             index.setEditable(False)
-
-            if index_name == "xip.document_type":
-                document_type = QComboBox()
-                document_type.addItem("")
-                document_type.addItem("IO")
-                document_type.addItem("SO")
-                filter_column = QStandardItem("")
-            else:
-                filter_column = QStandardItem("")
-                filter_column.setEditable(True)
 
             model.appendRow([index])
 
