@@ -14,6 +14,13 @@ TYPE_ASSET = "Asset"
 TYPE_FOLDER = "Folder"
 DOCUMENT_TYPE = "xip.document_type"
 
+FORMAT_VALID_DISPLAY = "xip.is_valid_r_Display"
+FORMAT_VALID_PRESERVATION = "xip.is_valid_r_Preservation"
+VALID_ANY = ""
+VALID_TRUE = "true"
+VALID_FALSE = "false"
+
+
 class CallBack(QObject):
     change_value = QtCore.Signal(int)
     max_value = QtCore.Signal(int)
@@ -124,6 +131,7 @@ class PasswordDialog(QDialog):
         self.username_text = QtWidgets.QLineEdit("")
         self.username_text.setToolTip("This is your username (email) for Preservica")
         self.password_text = QtWidgets.QLineEdit("")
+        self.password_text.setEchoMode(QLineEdit.Password)
         self.password_text.setToolTip("This is your password for Preservica")
         self.tenant_text = QtWidgets.QLineEdit("")
         self.tenant_text.setToolTip("This is short code for your tenancy name")
@@ -189,7 +197,9 @@ class ComboDelegate(QItemDelegate):
         QItemDelegate.__init__(self, parent)
         self.index_name = index_name
         self.model = model
-        self.drop_down_row = -1
+        self.document_type_row = -1
+        self.display_valid_row = -1
+        self.preservation_valid_row = -1
 
     def createEditor(self, parent, option, index):
 
@@ -197,7 +207,7 @@ class ComboDelegate(QItemDelegate):
         index_name = item_model.item(index.row(), 0).text()
 
         if index_name == DOCUMENT_TYPE:
-            self.drop_down_row = index.row()
+            self.document_type_row = index.row()
             combo = QComboBox(parent)
             li = list()
             li.append(TYPE_ANY)
@@ -206,12 +216,32 @@ class ComboDelegate(QItemDelegate):
             combo.addItems(li)
             self.connect(combo, SIGNAL("currentIndexChanged(int)"), self, SLOT("currentIndexChanged()"))
             return combo
+        elif index_name == FORMAT_VALID_DISPLAY:
+            self.display_valid_row = index.row()
+            combo = QComboBox(parent)
+            li = list()
+            li.append(VALID_ANY)
+            li.append(VALID_TRUE)
+            li.append(VALID_FALSE)
+            combo.addItems(li)
+            self.connect(combo, SIGNAL("currentIndexChanged(int)"), self, SLOT("currentIndexChanged()"))
+            return combo
+        elif index_name == FORMAT_VALID_PRESERVATION:
+            self.preservation_valid_row = index.row()
+            combo = QComboBox(parent)
+            li = list()
+            li.append(VALID_ANY)
+            li.append(VALID_TRUE)
+            li.append(VALID_FALSE)
+            combo.addItems(li)
+            self.connect(combo, SIGNAL("currentIndexChanged(int)"), self, SLOT("currentIndexChanged()"))
+            return combo
         else:
             return QLineEdit(parent)
 
     def setEditorData(self, editor, index):
         editor.blockSignals(True)
-        if index.row() == self.drop_down_row:
+        if index.row() == self.document_type_row:
             if self.model.data(index) is not None:
                 if self.model.data(index) == TYPE_ANY:
                     editor.setCurrentIndex(0)
@@ -219,13 +249,21 @@ class ComboDelegate(QItemDelegate):
                     editor.setCurrentIndex(1)
                 if self.model.data(index) == TYPE_FOLDER:
                     editor.setCurrentIndex(2)
+        elif index.row() == self.preservation_valid_row or index.row() == self.display_valid_row:
+            if self.model.data(index) is not None:
+                if self.model.data(index) == VALID_ANY:
+                    editor.setCurrentIndex(0)
+                if self.model.data(index) == VALID_TRUE:
+                    editor.setCurrentIndex(1)
+                if self.model.data(index) == VALID_FALSE:
+                    editor.setCurrentIndex(2)
         else:
             if self.model.item(index.row(), 1) is not None:
                 editor.setText(self.model.item(index.row(), 1).text())
         editor.blockSignals(False)
 
     def setModelData(self, editor, model, index):
-        if index.row() == self.drop_down_row:
+        if index.row() == self.document_type_row or index.row() == self.display_valid_row or index.row() == self.preservation_valid_row:
             model.setData(index, editor.itemText(editor.currentIndex()))
         else:
             model.setData(index, editor.text())
@@ -250,7 +288,7 @@ class MyWidget(QtWidgets.QWidget):
                     metadata_fields[index_name] = ""
                     if hasattr(item_model.item(i, 1), "text"):
                         index_value = item_model.item(i, 1).text()
-                        if index_name ==DOCUMENT_TYPE:
+                        if index_name == DOCUMENT_TYPE:
                             if index_value == TYPE_ASSET:
                                 index_value = "IO"
                             if index_value == TYPE_FOLDER:
