@@ -1,3 +1,5 @@
+import pathlib
+
 from setuptools import setup
 
 # The directory containing this file
@@ -9,7 +11,7 @@ README = (HERE / "README.md").read_text()
 # This call to setup() does all the work
 setup(
     name="pyPreservicaSearch",
-    version="0.0.2",
+    version="0.1.0",
     description="Simple Report Designer for Preservica",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -23,5 +25,5 @@ setup(
         "Operating System :: OS Independent",
         "Topic :: System :: Archiving",
     ],
-    install_requires=["requests", "certifi", "pyPreservica", "PySide2"]
+    install_requires=["requests", "certifi", "pyPreservica >= 0.7.3", "PySide2 == 5.15.0", "shiboken2 == 5.15.0"]
 )

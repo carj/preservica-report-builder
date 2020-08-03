@@ -3,7 +3,7 @@ import subprocess
 import sys
 
 from PySide2 import QtCore, QtWidgets
-from PySide2.QtCore import Slot, QRunnable, QThreadPool, QObject, SIGNAL, SLOT
+from PySide2.QtCore import Slot, QRunnable, QThreadPool, QObject, SIGNAL, SLOT, Qt
 from PySide2.QtGui import QStandardItem, QStandardItemModel
 from PySide2.QtWidgets import QAbstractItemView, QDialog, QDialogButtonBox, QApplication, QProgressDialog, QComboBox, \
     QItemDelegate, QLineEdit, QTreeView
@@ -24,6 +24,7 @@ VALID_FALSE = "false"
 class CallBack(QObject):
     change_value = QtCore.Signal(int)
     max_value = QtCore.Signal(int)
+    reset_dialog = QtCore.Signal()
 
     def __init__(self):
         QObject.__init__(self)
@@ -37,8 +38,7 @@ class CallBack(QObject):
         self.change_value.emit(self.progress)
         self.max_value.emit(self.total)
         if self.progress == self.total:
-            self.change_value.emit(0)
-            self.max_value.emit(0)
+            self.reset_dialog.emit()
 
 
 class Worker(QRunnable):
@@ -298,6 +298,7 @@ class MyWidget(QtWidgets.QWidget):
                         metadata_fields[index_name] = index_value
 
             self.progress = QProgressDialog("Creating Report\n\nPlease Wait...", None, 0, 100)
+            self.progress.setModal(True)
             self.progress.setWindowTitle("Report")
             self.progress.setAutoClose(True)
             self.progress.setAutoReset(True)
@@ -306,8 +307,9 @@ class MyWidget(QtWidgets.QWidget):
                             dialog.auto_report())
             self.callback.change_value.connect(self.progress.setValue)
             self.callback.max_value.connect(self.progress.setMaximum)
+            self.callback.reset_dialog.connect(self.progress.reset)
             self.threadpool.start(worker)
-            self.progress.setModal(True)
+
             self.progress.show()
 
     def __init__(self):
@@ -368,6 +370,7 @@ class MyWidget(QtWidgets.QWidget):
         self.layout.addWidget(self.list)
         self.layout.addWidget(self.run_report_button)
         self.setLayout(self.layout)
+
 
 
 if __name__ == "__main__":
